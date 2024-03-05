@@ -60,8 +60,12 @@ def get_current_location():
 def get_current_weather(location, unit='celsius'):
     # Mock response
     print(f'location: {location}')
-    assert location == 'Guangzhou'
-    return 'Sunny at 25 degrees Celsius.'
+    if location == 'Guangzhou':
+        return 'Sunny at 25 degrees Celsius.'
+    elif location == 'Beijing':
+        return 'Rainy at 30 degrees'
+    else:
+        return 'Well, it\'s a normal Sunny day~'
 
 function_map = {
     'get_current_location': get_current_location,
@@ -80,6 +84,7 @@ def complete(messages):
     )
     response = bedrock_runtime.invoke_model(body=body, modelId=model_id)
     response_body = json.loads(response.get('body').read())
+    print(response_body)
     result = json.loads(response_body['content'][0]['text'])
     print(result)
     # result should be parsed to a valid python dict object
@@ -87,8 +92,12 @@ def complete(messages):
 
 def main():
     messages = [
-        {'role': 'user', 'content': 'What is the current weather?'},
+        {'role': 'user', 'content': 'What is the current weather of Guangzhou and Beijing? Do I have to bring a umbrella?'},
     ]
+    # Use this messages to test if LLM choose get_current_location before get_weather
+    # messages = [
+    #     {'role': 'user', 'content': 'What is the current weather?'},
+    # ]
     finished = False
     response = ''
 
@@ -101,8 +110,8 @@ def main():
             # calling the function
             function_result = function2call(**tool_input)
             # Append to prompts
-            messages.append({'role': 'assistant', 'content': f'\n\nAssistant: Should use {tool} tool with args: {json.dumps(tool_input)}'})
-            messages.append({'role': 'user', 'content': f'\n\nHuman: I have used the {tool} tool and the result is : {function_result}'})
+            messages.append({'role': 'assistant', 'content': f'Should use {tool} tool with args: {json.dumps(tool_input)}'})
+            messages.append({'role': 'user', 'content': f'I have used the {tool} tool and the result is : {function_result}'})
         elif result['result'] == 'stop':
             finished = True
             response = result['content']
