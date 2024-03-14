@@ -37,7 +37,7 @@ You have access to the following tools:
         }
     }
 ]
-Select one of the above tools if needed, respond with only a JSON object matching the following schema:
+Select one of the above tools if needed, respond with only a JSON object matching the following schema inside a <json></json> xml tag:
 {
     "result": "tool_use",
     "tool": <name of the selected tool, leave blank if no tools needed>,
@@ -73,31 +73,38 @@ function_map = {
 }
 
 def complete(messages):
+    assistant_prefill = {
+        'role': 'assistant',
+        'content': 'Here is the result in JSON: <json>'
+    }
     model_id = 'anthropic.claude-3-sonnet-20240229-v1:0'
+    # model_id = 'anthropic.claude-3-haiku-20240307-v1:0'
     body=json.dumps(
         {
             "anthropic_version": "bedrock-2023-05-31",
             "max_tokens": 1000,
             "system": system_prompt,
-            "messages": messages
+            "messages": [*messages, assistant_prefill],
+            "stop_sequences": ['</json>']
         }
     )
     response = bedrock_runtime.invoke_model(body=body, modelId=model_id)
     response_body = json.loads(response.get('body').read())
-    print(response_body)
-    result = json.loads(response_body['content'][0]['text'])
-    print(result)
+    result = {}
+    try: 
+        result = json.loads(response_body['content'][0]['text'])
+    except Exception as e:
+        print(f'Completion cannot be parsed to a valid json\n{e}\nres: {response_body}')
     # result should be parsed to a valid python dict object
+    print(result)
     return result
 
 def main():
     messages = [
         {'role': 'user', 'content': 'What is the current weather of Guangzhou and Beijing? Do I have to bring a umbrella?'},
+        # Use this messages to test if LLM choose get_current_location before get_weather
+        # {'role': 'user', 'content': 'What is the current weather?'},
     ]
-    # Use this messages to test if LLM choose get_current_location before get_weather
-    # messages = [
-    #     {'role': 'user', 'content': 'What is the current weather?'},
-    # ]
     finished = False
     response = ''
 
