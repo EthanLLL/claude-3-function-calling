@@ -52,6 +52,10 @@ If no further tools needed, response with only a JSON object matching the follow
 }
 '''
 
+assistant_prefill = {
+    'role': 'assistant',
+    'content': 'Here is the result in JSON: <json>'
+}
 
 def get_current_location():
     # Mock response
@@ -72,44 +76,74 @@ function_map = {
     'get_current_weather': get_current_weather
 }
 
+def parse_json_str(json_str):
+    # response from LLM may contains \n
+    result = {}
+    try:
+        print('LLM response can be parsed as a valid JSON object.')
+        result = json.loads(json_str.replace('\n', '').replace('\r', ''))
+    except Exception as e:
+        print('Cannot parsed to a valid python dict object')
+        print(e)
+    return result
+
 def complete(messages):
-    assistant_prefill = {
-        'role': 'assistant',
-        'content': 'Here is the result in JSON: <json>'
-    }
     model_id = 'anthropic.claude-3-sonnet-20240229-v1:0'
     # model_id = 'anthropic.claude-3-haiku-20240307-v1:0'
     body=json.dumps(
         {
-            "anthropic_version": "bedrock-2023-05-31",
-            "max_tokens": 1000,
-            "system": system_prompt,
-            "messages": [*messages, assistant_prefill],
-            "stop_sequences": ['</json>']
+            'anthropic_version': 'bedrock-2023-05-31',
+            'max_tokens': 1000,
+            'system': system_prompt,
+            'temperature': 0,
+            'messages': [*messages, assistant_prefill],
+            'stop_sequences': ['</json>']
         }
     )
     response = bedrock_runtime.invoke_model(body=body, modelId=model_id)
     response_body = json.loads(response.get('body').read())
-    result = {}
-    try: 
-        result = json.loads(response_body['content'][0]['text'])
-    except Exception as e:
-        print(f'Completion cannot be parsed to a valid json\n{e}\nres: {response_body}')
-    # result should be parsed to a valid python dict object
-    print(result)
-    return result
+    text = response_body['content'][0]['text']
+    print(text)
+    return parse_json_str(text)
 
-def main():
-    messages = [
-        {'role': 'user', 'content': 'What is the current weather of Guangzhou and Beijing? Do I have to bring a umbrella?'},
-        # Use this messages to test if LLM choose get_current_location before get_weather
-        # {'role': 'user', 'content': 'What is the current weather?'},
-    ]
+def stream_complete(messages):
+    model_id = 'anthropic.claude-3-sonnet-20240229-v1:0'
+    # model_id = 'anthropic.claude-3-haiku-20240307-v1:0'
+    body = json.dumps(
+        {
+            'anthropic_version': 'bedrock-2023-05-31',
+            'max_tokens': 1000,
+            'system': system_prompt,
+            'temperature': 0,
+            'messages': [*messages, assistant_prefill],
+            'stop_sequences': ['</json>']
+        }
+    )
+    response = bedrock_runtime.invoke_model_with_response_stream(
+        body=body, modelId=model_id
+    )
+
+    result_chunks = ''
+    print('LLM Response: \n')
+    for event in response.get("body"):
+        chunk = json.loads(event["chunk"]["bytes"])
+
+        if chunk['type'] == 'content_block_delta' and chunk['delta']['type'] == 'text_delta':
+            text = chunk['delta']['text']
+            print(text, end='')
+            result_chunks += text
+    return parse_json_str(result_chunks)
+
+def agents(messages, stream=False):
+    
     finished = False
     response = ''
-
     while not finished:
-        result = complete(messages)
+        result = {}
+        if stream:
+            result = stream_complete(messages)
+        else:
+            result = complete(messages)
         if result['result'] == 'tool_use':
             tool = result['tool']
             tool_input = result['tool_input']
@@ -122,8 +156,18 @@ def main():
         elif result['result'] == 'stop':
             finished = True
             response = result['content']
-    
-    print(f'AI: {response}')
+    return response
+
+def main():
+    messages = [
+        {'role': 'user', 'content': 'What is the current weather of Guangzhou and Beijing? Do I have to bring a umbrella?'},
+        # Use this messages to test if LLM choose get_current_location before get_weather
+        # {'role': 'user', 'content': 'What is the current weather?'},
+    ]
+    res = agents([*messages], stream=False)
+    print(f'AI: {res}')
+    res = agents([*messages], stream=True)
+    print(f'AI: {res}')
 
 if __name__ == '__main__':
     main()
