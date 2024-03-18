@@ -40,15 +40,15 @@ You have access to the following tools:
 Select one of the above tools if needed, respond with only a JSON object matching the following schema inside a <json></json> xml tag:
 {
     "result": "tool_use",
-    "tool": <name of the selected tool, leave blank if no tools needed>,
+    "tool": "<name of the selected tool, leave blank if no tools needed>",
     "tool_input": <parameters for the selected tool, matching the tool\'s JSON schema>,
-    "explanation": <The explanation why you choosed this tool.>
+    "explanation": "<The explanation why you choosed this tool.>"
 }
 If no further tools needed, response with only a JSON object matching the following schema:
 {
     "result": "stop",
-    "content": <Your response to the user.>,
-    "explanation": <The explanation why you get the final answer.>
+    "content": "<Your response to the user.>",
+    "explanation": "<The explanation why you get the final answer.>"
 }
 '''
 
@@ -80,8 +80,8 @@ def parse_json_str(json_str):
     # response from LLM may contains \n
     result = {}
     try:
-        print('LLM response can be parsed as a valid JSON object.')
         result = json.loads(json_str.replace('\n', '').replace('\r', ''))
+        print('LLM response can be parsed as a valid JSON object.')
     except Exception as e:
         print('Cannot parsed to a valid python dict object')
         print(e)
@@ -163,6 +163,9 @@ def main():
         {'role': 'user', 'content': 'What is the current weather of Guangzhou and Beijing? Do I have to bring a umbrella?'},
         # Use this messages to test if LLM choose get_current_location before get_weather
         # {'role': 'user', 'content': 'What is the current weather?'},
+        # Use these messages to test if tool is unnecessary.
+        # {'role': 'user', 'content': 'What is the current timestamp?'}
+        # {'role': 'user', 'content': 'Hi How are you?'}
     ]
     res = agents([*messages], stream=False)
     print(f'AI: {res}')
