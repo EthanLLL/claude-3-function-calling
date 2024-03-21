@@ -15,7 +15,7 @@ You have access to the following tools:
             "properties": {
                 "location": {
                     "type": "string",
-                    "description": "The city or state which is required."
+                    "description": "The city or region which is required to fetch weather information.",
                 },
                 "unit": {
                     "type": "string",
@@ -37,13 +37,18 @@ You have access to the following tools:
         }
     }
 ]
-Select one of the above tools if needed, respond with only a JSON object matching the following schema inside a <json></json> xml tag:
+Select one or more tools if needed, respond with only a JSON object matching the following schema inside a <json></json> xml tag:
 {
     "result": "tool_use",
-    "tool": "<name of the selected tool, leave blank if no tools needed>",
-    "tool_input": <parameters for the selected tool, matching the tool\'s JSON schema>,
-    "explanation": "<The explanation why you choosed this tool.>"
+    "tool_calls": [
+        {
+            "tool": "<name of the selected tool, leave blank if no tools needed>",
+            "tool_input": <parameters for the selected tool, matching the tool\'s JSON schema>
+        }
+    ]
+    "explanation": "<The explanation why you choosed these tools.>"
 }
+
 If no further tools needed, response with only a JSON object matching the following schema:
 {
     "result": "stop",
@@ -65,11 +70,10 @@ def get_current_weather(location, unit='celsius'):
     # Mock response
     print(f'location: {location}')
     if location == 'Guangzhou':
-        return 'Sunny at 25 degrees Celsius.'
+        return 'Guangzhou: Sunny at 25 degrees Celsius.'
     elif location == 'Beijing':
-        return 'Rainy at 30 degrees'
-    else:
-        return 'Well, it\'s a normal Sunny day~'
+        return ' Beijing: Rainy at 30 degrees'
+    return 'It\'s a normal sunny day~'
 
 function_map = {
     'get_current_location': get_current_location,
@@ -102,6 +106,7 @@ def complete(messages):
     )
     response = bedrock_runtime.invoke_model(body=body, modelId=model_id)
     response_body = json.loads(response.get('body').read())
+    print(response_body)
     text = response_body['content'][0]['text']
     print(text)
     return parse_json_str(text)
@@ -145,14 +150,20 @@ def agents(messages, stream=False):
         else:
             result = complete(messages)
         if result['result'] == 'tool_use':
-            tool = result['tool']
-            tool_input = result['tool_input']
-            function2call = function_map[tool]
-            # calling the function
-            function_result = function2call(**tool_input)
-            # Append to prompts
-            messages.append({'role': 'assistant', 'content': f'Should use {tool} tool with args: {json.dumps(tool_input)}'})
-            messages.append({'role': 'user', 'content': f'I have used the {tool} tool and the result is : {function_result}'})
+            assistant_msg = ''
+            function_msg = ''
+            for t in result['tool_calls']:
+                tool = t['tool']
+                tool_input = t['tool_input']
+                assistant_msg += f'Should use {tool} tool with args: {json.dumps(tool_input)}\n'
+                function2call = function_map[tool]
+                # calling the function
+                function_result = function2call(**tool_input)
+                # Append to prompts
+                function_msg += f'I have used the {tool} tool with args: {json.dumps(tool_input)} and the result is : {function_result}\n'
+            messages.append({'role': 'assistant', 'content': assistant_msg})
+            messages.append({'role': 'user', 'content': function_msg})
+
         elif result['result'] == 'stop':
             finished = True
             response = result['content']
@@ -160,7 +171,9 @@ def agents(messages, stream=False):
 
 def main():
     messages = [
-        {'role': 'user', 'content': 'What is the current weather of Guangzhou and Beijing? Do I have to bring a umbrella?'},
+        {'role': 'user', 'content': 'What is the current weather of Guangzhou, Shanghai and Beijing? Do I have to bring an umbrella?'},
+        # {'role': 'user', 'content': '今日の広州と北京の天気はどうですか?外出時に傘が必要ですか?'},
+        # {'role': 'user', 'content': '请问今天广州和北京的天气如何？出门需要带伞吗'},
         # Use this messages to test if LLM choose get_current_location before get_weather
         # {'role': 'user', 'content': 'What is the current weather?'},
         # Use these messages to test if tool is unnecessary.
@@ -169,8 +182,8 @@ def main():
     ]
     res = agents([*messages], stream=False)
     print(f'AI: {res}')
-    res = agents([*messages], stream=True)
-    print(f'AI: {res}')
+    # res = agents([*messages], stream=True)
+    # print(f'AI: {res}')
 
 if __name__ == '__main__':
     main()
