@@ -37,7 +37,7 @@ You have access to the following tools:
         }
     }
 ]
-Select one or more tools if needed, respond with only a JSON object matching the following schema inside a <json></json> xml tag:
+Please think step by step. If needed, please select one or more tools whose parameters have already been provided. Respond with only a JSON object matching the following schema inside a <json></json> xml tag:
 {
     "result": "tool_use",
     "tool_calls": [
@@ -171,11 +171,11 @@ def agents(messages, stream=False):
 
 def main():
     messages = [
-        {'role': 'user', 'content': 'What is the current weather of Guangzhou, Shanghai and Beijing? Do I have to bring an umbrella?'},
+        # {'role': 'user', 'content': 'What is the current weather of Guangzhou, Shanghai and Beijing? Do I have to bring an umbrella?'},
         # {'role': 'user', 'content': '今日の広州と北京の天気はどうですか?外出時に傘が必要ですか?'},
         # {'role': 'user', 'content': '请问今天广州和北京的天气如何？出门需要带伞吗'},
         # Use this messages to test if LLM choose get_current_location before get_weather
-        # {'role': 'user', 'content': 'What is the current weather?'},
+        {'role': 'user', 'content': 'What is the current weather?'},
         # Use these messages to test if tool is unnecessary.
         # {'role': 'user', 'content': 'What is the current timestamp?'}
         # {'role': 'user', 'content': 'Hi How are you?'}

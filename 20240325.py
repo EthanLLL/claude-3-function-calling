@@ -154,7 +154,7 @@ def agents(messages, stream=False):
 def main():
     messages = [
         # {'role': 'user', 'content': 'What is the current weather of Guangzhou, Shanghai and Beijing? Do I have to bring an umbrella?'},
-        {'role': 'user', 'content': 'What is the current weather of Guangzhou and Beijing? Do I have to bring an umbrella? And what is 1 + 1?'},
+        {'role': 'user', 'content': 'what is 1 + 1?\n And what is the current weather of Guangzhou and Beijing? Do I have to bring an umbrella?'},
         # {'role': 'user', 'content': '今日の広州と北京の天気はどうですか?外出時に傘が必要ですか?'},
         # {'role': 'user', 'content': '请问今天广州和北京的天气如何？出门需要带伞吗'},
         # Use this messages to test if LLM choose get_current_location before get_weather
